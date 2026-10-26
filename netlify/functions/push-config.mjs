@@ -1,0 +1,2 @@
+import {json} from '../../server/push-server.mjs';
+export default async function(req){if(req.method!=='GET')return json({error:'Método não permitido.'},405);const publicKey=process.env.VAPID_PUBLIC_KEY;if(!publicKey)return json({error:'As notificações ainda não foram configuradas.'},503);return json({publicKey});}

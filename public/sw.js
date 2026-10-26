@@ -1,0 +1,5 @@
+self.addEventListener('install',()=>self.skipWaiting());
+self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
+// Não guarda páginas financeiras, respostas de API ou credenciais em cache.
+self.addEventListener('push',event=>{let payload={};try{payload=event.data?.json()||{};}catch{}event.waitUntil(self.registration.showNotification(payload.title||'Áurea',{body:payload.body||'Você está com o Áurea atualizado? Prosperar começa em casa.',icon:'/icons/aurea-192.png',badge:'/icons/aurea-192.png',tag:payload.tag||'aurea-reminder',data:{url:'/'}}));});
+self.addEventListener('notificationclick',event=>{event.notification.close();event.waitUntil((async()=>{const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});for(const win of windows){if(new URL(win.url).origin===self.location.origin){await win.focus();return;}}await self.clients.openWindow('/');})());});
