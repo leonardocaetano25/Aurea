@@ -1,0 +1,337 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Áurea familiar",
+    "version": "1.3.0",
+    "description": "Consultar e incluir registros financeiros. Cada GPT privado usa a chave de UMA pessoa."
+  },
+  "servers": [
+    {
+      "url": "https://aureafamiliar.netlify.app"
+    }
+  ],
+  "security": [
+    {
+      "personalKey": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "personalKey": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "RecordInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "description",
+          "amount",
+          "date"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "entry",
+              "account",
+              "card",
+              "debt",
+              "goal",
+              "override"
+            ],
+            "description": "entry: receita/despesa/transferência; account: conta; card: cartão; debt: dívida; goal: meta; override: alteração de UMA ocorrência existente sem alteração prévia."
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "amount": {
+            "type": "number",
+            "nullable": true,
+            "description": "Reais, até 2 casas decimais. null somente entrada/ocorrência de valor desconhecido pendente. Conta pode ter saldo negativo."
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "AAAA-MM-DD. entry com cartão: data da compra; demais: vencimento/data inicial/data da meta/data do saldo. override: vencimento da ocorrência."
+          },
+          "person": {
+            "type": "string",
+            "description": "entry/override: UUID de membro do catálogo, obrigatório; demais: nome da pessoa ou credor."
+          },
+          "account": {
+            "type": "string",
+            "description": "ID da conta existente, obrigatório em entry/override."
+          },
+          "target": {
+            "type": "string",
+            "description": "ID de outra conta, obrigatório para transferência."
+          },
+          "card": {
+            "type": "string",
+            "description": "ID do cartão, somente despesas. Nova compra recalcula vencimento e fica pendente."
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "Moradia",
+              "Alimentação",
+              "Transporte",
+              "Filhas",
+              "Saúde",
+              "Educação",
+              "Lazer",
+              "Assinaturas",
+              "Dívidas",
+              "Salário",
+              "Renda extra",
+              "Outros"
+            ]
+          },
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "none",
+              "weekly",
+              "fortnight",
+              "monthly",
+              "yearly"
+            ],
+            "description": "Recorrência de entry. Sem end nem installments: sem fim."
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "description": "Último vencimento permitido, inclusive."
+          },
+          "installments": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2400,
+            "description": "Quantidade total de parcelas; amount é o valor de CADA parcela."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "paid",
+              "pending"
+            ],
+            "description": "Obrigatório em entry/override. Não usar paid em data futura."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "income",
+              "expense",
+              "transfer"
+            ]
+          },
+          "paid": {
+            "type": "number",
+            "minimum": 0,
+            "description": "debt: total já pago; goal: valor já reservado. Não cria movimentação bancária."
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 4000,
+            "description": "Condições da dívida; somente o que o usuário informou."
+          },
+          "closing": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 31
+          },
+          "due": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 31
+          },
+          "entry": {
+            "type": "string",
+            "description": "ID original para override. Enviar os demais campos completos da ocorrência."
+          },
+          "paidDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "skip": {
+            "type": "boolean",
+            "description": "override: remover somente esta ocorrência da projeção."
+          },
+          "unknown": {
+            "type": "boolean"
+          },
+          "googleEventUrl": {
+            "type": "string",
+            "description": "override: URL https://calendar.google.com/calendar/... do evento já salvo manualmente."
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/aurea/catalog": {
+      "get": {
+        "operationId": "consultarCadastros",
+        "summary": "Consultar contas, cartões, dívidas, metas, responsáveis e categorias da casa (até 500 cadastros)",
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos"
+          },
+          "401": {
+            "description": "Chave inválida, expirada, revogada ou vínculo alterado"
+          },
+          "409": {
+            "description": "Conflito: não repetir com nova chave de solicitação sem conferir"
+          },
+          "429": {
+            "description": "Limite de solicitações"
+          }
+        }
+      }
+    },
+    "/api/aurea/records": {
+      "get": {
+        "operationId": "listarRegistros",
+        "summary": "Listar registros BRUTOS da casa: receitas, despesas, transferências e demais cadastros, 100 por página. Recorrências não são expandidas.",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "entry",
+                "account",
+                "card",
+                "debt",
+                "goal",
+                "override"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos"
+          },
+          "401": {
+            "description": "Chave inválida, expirada, revogada ou vínculo alterado"
+          },
+          "409": {
+            "description": "Conflito: não repetir com nova chave de solicitação sem conferir"
+          },
+          "429": {
+            "description": "Limite de solicitações"
+          }
+        }
+      },
+      "post": {
+        "operationId": "incluirRegistro",
+        "summary": "Incluir qualquer tipo de cadastro ou lançamento após conferir com o usuário",
+        "x-openai-isConsequential": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "request_id",
+                  "record"
+                ],
+                "properties": {
+                  "request_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "UUID novo por operação; repetir EXATAMENTE o mesmo UUID e corpo se houve timeout. Nunca gerar outro para tentar o mesmo lançamento."
+                  },
+                  "record": {
+                    "$ref": "#/components/schemas/RecordInput"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos"
+          },
+          "401": {
+            "description": "Chave inválida, expirada, revogada ou vínculo alterado"
+          },
+          "409": {
+            "description": "Conflito: não repetir com nova chave de solicitação sem conferir"
+          },
+          "429": {
+            "description": "Limite de solicitações"
+          }
+        }
+      }
+    }
+  }
+}

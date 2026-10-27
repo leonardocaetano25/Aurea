@@ -1,3 +1,7 @@
+# Atualização 1.3: API para ChatGPT
+
+Para configurar a integração nova, siga **API-CHATGPT.md**. Execute **supabase/api.sql**, atualize o GitHub e publique no Netlify. As configurações existentes permanecem.
+
 # Áurea — Supabase + GitHub + Netlify
 
 Aplicativo de finanças da família, com visual azul e dourado. Não utiliza login do ChatGPT. Push diário às 20h de Brasília. Para receber no iPhone, o Web Push exige abrir pela tela inicial. Consulte PUSH-20H.md.

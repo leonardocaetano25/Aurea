@@ -4,6 +4,16 @@
 [build.environment]
   NODE_VERSION = "22"
 [[redirects]]
+  from = "/api/aurea/catalog"
+  to = "/.netlify/functions/aurea-api?op=catalog"
+  status = 200
+  force = true
+[[redirects]]
+  from = "/api/aurea/records"
+  to = "/.netlify/functions/aurea-api?op=records"
+  status = 200
+  force = true
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
