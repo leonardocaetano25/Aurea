@@ -3,7 +3,15 @@ import {adminClient,json} from '../../server/push-server.mjs';
 import {validateRecord,applyCard,categories,date} from '../../server/api-core.mjs';
 export default async function handler(request){
  try{
- const url=new URL(request.url);const route=url.searchParams.get('op');const op=route==='records'?(request.method==='POST'?'create':'list'):route;
+const url = new URL(request.url);
+const routes = {
+  '/api/aurea/catalog': 'catalog',
+  '/api/aurea/records': 'records'
+};
+const route = routes[url.pathname] ?? url.searchParams.get('op');
+const op = route === 'records'
+  ? (request.method === 'POST' ? 'create' : 'list')
+  : route;
  if(!['catalog','list','create'].includes(op))return json({error:'Operação desconhecida.'},404);
  if(request.method!==(op==='create'?'POST':'GET'))return json({error:'Método não permitido.'},405);
  const token=request.headers.get('authorization')?.match(/^Bearer (aur_[a-f0-9]{64})$/)?.[1];
